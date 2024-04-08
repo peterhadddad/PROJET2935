@@ -127,7 +127,7 @@ VALUES
 
 INSERT INTO Fichier (Fichier_ID, Type, Chemin, Description, DateUpload, ThemeID, MembreID)
 VALUES
-(1, 'pdf', 'documents/tech_trends.pdf', 'Tendances technologiques 2024', '2024-01-15', 1, 1),
+(1, 'video', 'documents/tech_trends.pdf', 'Tendances technologiques 2024', '2024-01-15', 1, 1),
 (2, 'jpg', 'images/nature_forest.jpg', 'Forêt mystique en automne', '2024-02-20', 2, 2);
 
 INSERT INTO MOTCLE (MotCleID, MotCle)
