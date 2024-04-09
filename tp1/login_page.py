@@ -1,78 +1,110 @@
-import os
 import tkinter as tk
-from tkinter import font as tkfont
+from tkinter import messagebox
 from PIL import Image, ImageTk
-from signup_page import open_signup_window 
+import pyodbc
 
-def open_login_window(main_window_size):
-    login_window = tk.Toplevel()
-    login_window.title("Connexion")
-    login_window.geometry(main_window_size) 
-    login_window.configure(bg='white')
+class LoginPage(tk.Frame):
+    def __init__(self, parent, styles, controller):
+        super().__init__(parent, bg=styles.base_style['bg'])
+        self.styles = styles
+        self.controller = controller
+        self.build_ui()
 
-    # Charger l'image pour le logo
-    webtv_image = Image.open(os.path.join(os.path.dirname(__file__), "images", "WebTV.png"))
-    webtv_photo = ImageTk.PhotoImage(webtv_image)
+    def build_ui(self):
+        self.grid_columnconfigure(0, weight=1) 
+        self.grid_columnconfigure(3, weight=1) 
+        self.grid_rowconfigure(0, weight=1)   
+        self.grid_rowconfigure(6, weight=1)     
+
+        # Load and resize the back button image
+        back_image_path = "images/backtrack.png"
+        back_image = Image.open(back_image_path).resize((48, 48))
+        back_photo = ImageTk.PhotoImage(back_image)
+
+        # Back button
+        back_button = tk.Button(self, image=back_photo, command=lambda: self.controller.switch_frame('HomePage'), borderwidth=0)
+        back_button.image = back_photo
+        back_button.grid(row=0, column=0, sticky='nw')
+
+        # Load and resize the logo image
+        webtv_image_path = "images/WebTV.png"
+        webtv_image = Image.open(webtv_image_path)
+        webtv_photo = ImageTk.PhotoImage(webtv_image)
+
+        # Logo label, aligned with the back button
+        logo_label = tk.Label(self, image=webtv_photo, bg=self.styles.base_style['bg'])
+        logo_label.image = webtv_photo
+        logo_label.grid(row=0, column=1, padx=10, pady=10, sticky='nw')
+
+        # Label for the title "Connexion", with consistent background color
+        subtitle_label = tk.Label(self, text='Connexion', bg=self.styles.base_style['fg'])
+        subtitle_label.grid(row=2, column=1, columnspan=2, pady=10)
+
+        # Entry fields frame with background color from styles
+        form_frame = tk.Frame(self, bg=self.styles.base_style['bg'])
+        form_frame.grid(row=3, column=1, columnspan=2, pady=20)
+
+        # Entry fields
+        self.create_entry(form_frame, "Nom d'utilisateur", 0)
+        self.create_entry(form_frame, "Mot de passe", 1, show='*')
+
+        # Rounded button for "Login"
+        login_button_canvas = self.styles.create_rounded_button(self, "Login", lambda: self.validate_login())
+        login_button_canvas.grid(row=4, column=1, columnspan=2, pady=20)
+
+        # Label for "pas de compte ?" with consistent background color
+        no_account_label = tk.Label(self, text="Vous n'avez pas de compte?", **self.styles.base_style)
+        no_account_label.grid(row=5, column=1, columnspan=2, pady=(20, 0))
+
+        # Rounded button for "S'inscrire"
+        signup_button_canvas = self.styles.create_rounded_button(self, "S'inscrire", lambda: self.controller.switch_frame('SignupPage'))
+        signup_button_canvas.grid(row=6, column=1, columnspan=2, pady=(0, 20))
+
+    def create_entry(self, parent, label, row, show=None):
+        frame = tk.Frame(parent, borderwidth=1.5, relief='sunken', bg='white')
+        frame.grid(row=row, column=1, pady=5, padx=10, sticky='ew')
+        label_widget = tk.Label(parent, text=label, **self.styles.base_style)
+        label_widget.grid(row=row, column=0, sticky='w', padx=10)
+        entry_widget = tk.Entry(frame, **self.styles.entry_style, show=show)
+        entry_widget.pack(fill='both', expand=True)
+
+        # Set the attributes for username and password entries
+        if label == "Nom d'utilisateur":
+            self.entry_username = entry_widget
+        elif label == "Mot de passe":
+            self.entry_password = entry_widget
+
+    def validate_login(self):
+        input_username = self.entry_username.get().strip()
+        input_password = self.entry_password.get().strip()
 
 
-    
-    original_width, original_height = webtv_image.size
-    # Get the current size of the image
-    
-    # Define new dimensions (e.g., double the size)
-    new_width = original_width * 2
-    new_height = original_height * 2
-    
-    # Resize the image to the new dimensions
-    bigger_webtv_image = webtv_image.resize((new_width, new_height))
-    
-    # Convert the resized image for use with Tkinter
-    webtv_photo = ImageTk.PhotoImage(bigger_webtv_image)
+        server = 'localhost'
+        database = 'LDDProject'
+        username = 'SA'
+        password = 'Password123'
 
-    # Définir les polices
-    title_font = tkfont.Font(family='Helvetica', size=18, weight='bold')
-    entry_font = tkfont.Font(family='Helvetica', size=12)
+        # Create connection string
+        conn_str = f'DRIVER={{SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
 
-    # Frame pour le logo
-    logo_frame = tk.Frame(login_window, bg='white')
-    logo_frame.pack(side='top', pady=20)
-    logo_label = tk.Label(logo_frame, image=webtv_photo, bg='white')
-    logo_label.image = webtv_photo  # Garder une référence
-    logo_label.pack()
+        try:
+            # Establish connection
+            conn = pyodbc.connect(conn_str)
 
-    # Frame pour le titre "Connexion"
-    subtitle_frame = tk.Frame(login_window, bg='white')
-    subtitle_frame.pack(side='top', pady=10)
-    subtitle_label = tk.Label(subtitle_frame, text='Connexion', font=title_font, bg='white')
-    subtitle_label.pack()
+            cursor = conn.cursor()
 
-    # Frame pour les champs de saisie
-    form_frame = tk.Frame(login_window, bg='white')
-    form_frame.pack(side='top', pady=20)
+            # Corrected query to use the actual column names from your database schema
+            query = "SELECT * FROM Membre WHERE Pseudo = ? AND MotdePasse = ?"
+            cursor.execute(query, (input_username, input_password))
 
-    # Champs de saisie
-    entry_username = tk.Entry(form_frame, font=entry_font, width=20)
-    entry_username.grid(row=0, column=1, pady=5)
-    label_username = tk.Label(form_frame, text="Nom d'utilisateur", bg='white')
-    label_username.grid(row=0, column=0, pady=5)
+            if cursor.fetchone():
+                print("Login successful!")
+                self.controller.switch_frame('HomePage')  # Assuming this is the method to switch to the HomePage
+            else:
+                messagebox.showerror("Data Error","Connexion echoue, Pseudo ou Utilisateur invalide")
 
-    entry_password = tk.Entry(form_frame, font=entry_font, show='*', width=20)
-    entry_password.grid(row=1, column=1, pady=5)
-    label_password = tk.Label(form_frame, text='Mot de passe', bg='white')
-    label_password.grid(row=1, column=0, pady=5)
-
-    # Bouton de connexion
-    login_button = tk.Button(form_frame, text="Login", bg='purple', fg='white', font=entry_font, relief='flat', width=20)
-    login_button.grid(row=2, column=0, columnspan=2, pady=20)
-
-    # Question "pas de compte ?"
-    no_account_frame = tk.Frame(login_window, bg='white')
-    no_account_frame.pack(side='top')
-    no_account_label = tk.Label(no_account_frame, text="pas de compte ?", fg="black", bg='white', font=entry_font)
-    no_account_label.pack()
-
-    # Bouton "S'inscrire"
-    signup_button = tk.Button(no_account_frame, text="S'inscrire", bg='black', fg='white', font=entry_font, relief='flat', command=open_signup_window)
-    signup_button.pack()
+            conn.close()
+        except pyodbc.Error as e:
+            print("Error connecting to the database:", e)
 
     
